@@ -22,28 +22,19 @@ def download_tibetan_english_files(ids: List[str]):
         tibetan_txt_file = find_first_txt_file(tibetan_path)
         english_txt_file = find_first_txt_file(english_path)
 
-        if tibetan_txt_file and english_txt_file:
-            tokenized_tibetan_text = sent_tokenize(
-                tibetan_txt_file.read_text(), lang="bo"
-            )
-            tokenized_english_text = sent_tokenize(
-                english_txt_file.read_text(), lang="en"
-            )
+        if not tibetan_txt_file or not english_txt_file:
+            continue
 
-            # Write both tokenized text to files in TOKENIZED_FILES_PATH
-            with open(
-                TOKENIZED_FILES_PATH / f"tokenized_{tibetan_id}.txt",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(tokenized_tibetan_text)
+        tokenized_tibetan_text = sent_tokenize(tibetan_txt_file.read_text(), lang="bo")
+        tokenized_english_text = sent_tokenize(english_txt_file.read_text(), lang="en")
 
-            with open(
-                TOKENIZED_FILES_PATH / f"tokenized_{english_id}.txt",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(tokenized_english_text)
+        # Write both tokenized texts to files in TOKENIZED_FILES_PATH
+        (TOKENIZED_FILES_PATH / f"tokenized_{tibetan_id}.txt").write_text(
+            tokenized_tibetan_text
+        )
+        (TOKENIZED_FILES_PATH / f"tokenized_{english_id}.txt").write_text(
+            tokenized_english_text
+        )
 
 
 if __name__ == "__main__":
