@@ -7,18 +7,18 @@
 
 <!-- Replace with 1-sentence description about what this tool is or does.-->
 
-<h3 align="center">Use this repo template for all new Python projects.</h3>
+<h3 align="center">mt_aligner_prep_tool</h3>
 
 ## Description
 
-Project description goes here.
+Tool to prepare data (BO and EN files) before sending to mt-aligner.
 
 ## Project owner(s)
 
 <!-- Link to the repo owners' github profiles -->
 
-- [@10zinten](https://github.com/10zinten)
-- [@evanyerburgh](https://github.com/evanyerburgh)
+- [@TenzinGayche](https://github.com/TenzinGayche)
+- [@10tenzin3](https://github.com/tenzin3)
 
 ## Integrations
 
