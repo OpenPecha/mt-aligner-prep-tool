@@ -16,6 +16,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+  "botok >= 0.8.12",
+  "spacy >= 3.7.2",
+]
 
 [project.optional-dependencies]
 dev = [
