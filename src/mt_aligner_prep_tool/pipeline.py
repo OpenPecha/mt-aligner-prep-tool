@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 from mt_aligner_prep_tool.config import (
     BO_FILES_PATH,
@@ -17,12 +16,29 @@ from mt_aligner_prep_tool.upload import (
 )
 
 
-def pipeline(ids: List[str]):
+def get_file_content_by_lines(file_path):
+    """
+    Reads a file and returns its content split into lines.
+
+    :param file_path: Path to the file to be read.
+    :return: List of lines in the file.
+    """
+    file_path = Path(file_path)
+    if file_path.exists() and file_path.is_file():
+        with file_path.open("r") as file:
+            return [line.strip() for line in file if line.strip()]
+    else:
+        raise FileNotFoundError(f"No file found at {file_path}")
+
+
+def pipeline(file_path: Path):
+    """file_path: a file containing ids of the repositories to be aligned"""
+    """ids should be separated by new lines"""
+    ids = get_file_content_by_lines(file_path)
 
     """load progress"""
     already_aligned_ids = load_checkpoint()
 
-    """Download a repository from GitHub using git clone."""
     for id_ in ids:
         if id_ in already_aligned_ids:
             continue
@@ -41,7 +57,7 @@ def pipeline(ids: List[str]):
 
 
 def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Path):
-    """Tokenize the files and upload to S3"""
+    """Tokenize the files"""
     tokenized_bo_text = sent_tokenize(bo_file.read_text(), lang="bo")
     tokenized_en_text = sent_tokenize(en_file.read_text(), lang="en")
 
@@ -59,7 +75,6 @@ def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Pat
 def upload_tokenized_files(
     id_: str, tokenized_bo_file_path: Path, tokenized_en_file_path: Path
 ):
-    """Upload both tokenized texts to S3"""
     upload_file_to_s3(
         local_file_path=tokenized_bo_file_path,
         bucket="monlam.ai.tms",
@@ -70,7 +85,8 @@ def upload_tokenized_files(
         bucket="monlam.ai.tms",
         s3_file=f"tokenized_en/{tokenized_en_file_path.name}",
     )
-    """Get presigned url for both tokenized texts"""
+
+    """Get corresponding url for both tokenized texts"""
     tokenized_tibetan_url = create_s3_file_url(
         "monlam.ai.tms", f"tokenized_bo/{tokenized_bo_file_path.name}"
     )
@@ -90,4 +106,6 @@ def upload_tokenized_files(
 
 
 if __name__ == "__main__":
-    pipeline(["0001", "0002", "0003"])
+    ROOT_DIR = Path(__file__).parent.parent.parent
+    test_file_path = ROOT_DIR / "test_file.txt"
+    pipeline(test_file_path)

@@ -16,7 +16,7 @@ def upload_file_to_s3(local_file_path: Path, bucket: str, s3_file: str):
     s3_client.upload_file(local_file_path, bucket, s3_file)
 
 
-def create_s3_file_url(bucket_name: str, s3_file: str, expiration=3600):
+def create_s3_file_url(bucket_name: str, s3_file: str, expiration=36000):
     """
     Generate a presigned URL to share an S3 object
     :return: Presigned URL as string. If error, returns None.
