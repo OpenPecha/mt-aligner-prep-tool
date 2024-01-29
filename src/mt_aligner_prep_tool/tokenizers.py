@@ -108,8 +108,17 @@ def bo_sent_tokenizer(text: str) -> SENT_PER_LINE_STR:
     return sents_text
 
 
+def remove_emojis(text):
+    emojis_to_remove = ["1️⃣", "2️⃣", "3️⃣"]
+    for emoji in emojis_to_remove:
+        text = text.replace(emoji, "")
+    return text
+
+
 def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
     """Tokenize a text into sentences."""
+    text = remove_emojis(text)
+
     if lang == "en":
         return en_sent_tokenizer(text)
     elif lang == "bo":
