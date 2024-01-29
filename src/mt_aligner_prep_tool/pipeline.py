@@ -8,7 +8,11 @@ from mt_aligner_prep_tool.config import (
 )
 from mt_aligner_prep_tool.download import clone_github_repo, find_first_txt_file
 from mt_aligner_prep_tool.tokenizers import sent_tokenize
-from mt_aligner_prep_tool.upload import create_s3_file_url, upload_file_to_s3
+from mt_aligner_prep_tool.upload import (
+    create_s3_file_url,
+    send_api_request_to_aligner,
+    upload_file_to_s3,
+)
 
 
 def pipeline(ids: List[str]):
@@ -66,7 +70,10 @@ def upload_tokenized_files(tokenized_bo_file_path: Path, tokenized_en_file_path:
 
     if tokenized_tibetan_url and tokenized_english_url:
         """send both urls to api"""
-        pass
+        """get github url where tm result is stored"""
+        tm_url = send_api_request_to_aligner(  # noqa
+            tokenized_tibetan_url, tokenized_english_url
+        )
 
 
 if __name__ == "__main__":
