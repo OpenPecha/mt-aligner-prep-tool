@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 
 import boto3
+from botocore.exceptions import NoCredentialsError
 
 from mt_aligner_prep_tool.config import (
     BO_FILES_PATH,
@@ -18,6 +19,25 @@ def upload_file_to_s3(local_file_path: Path, bucket: str, s3_file: str):
     """s3_file: file name to be upload to s3, folder path in s3 bucket is included in the file name"""
     s3_client = boto3.client("s3")
     s3_client.upload_file(local_file_path, bucket, s3_file)
+
+
+def create_s3_file_url(bucket_name: str, s3_file: str, expiration=3600):
+    """
+    Generate a presigned URL to share an S3 object
+    :return: Presigned URL as string. If error, returns None.
+    """
+    s3_client = boto3.client("s3", region_name="us-east-1")
+    try:
+        response = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket_name, "Key": s3_file},
+            ExpiresIn=expiration,
+        )
+    except NoCredentialsError:
+        print("Credentials not available")
+        return None
+
+    return response
 
 
 def download_tibetan_english_files(ids: List[str]):
@@ -47,7 +67,7 @@ def download_tibetan_english_files(ids: List[str]):
             TOKENIZED_FILES_PATH / f"tokenized_{english_id}.txt"
         )
 
-        tokenized_english_file_path.write_text(tokenized_tibetan_text)
+        tokenized_tibetan_file_path.write_text(tokenized_tibetan_text)
 
         tokenized_english_file_path.write_text(tokenized_english_text)
 
@@ -62,6 +82,17 @@ def download_tibetan_english_files(ids: List[str]):
             bucket="monlam.ai.tms",
             s3_file=f"tokenized_en/{tokenized_english_file_path.name}",
         )
+        """Get presigned url for both tokenized texts"""
+        tokenized_tibetan_url = create_s3_file_url(
+            "monlam.ai.tms", f"tokenized_bo/{tokenized_tibetan_file_path.name}"
+        )
+        tokenized_english_url = create_s3_file_url(
+            "monlam.ai.tms", f"tokenized_en/{tokenized_english_file_path.name}"
+        )
+
+        if tokenized_tibetan_url and tokenized_english_url:
+            """send both urls to api"""
+            pass
 
 
 if __name__ == "__main__":
