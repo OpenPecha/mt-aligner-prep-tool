@@ -5,6 +5,8 @@ from mt_aligner_prep_tool.config import (
     BO_FILES_PATH,
     EN_FILES_PATH,
     TOKENIZED_FILES_PATH,
+    load_checkpoint,
+    save_checkpoint,
 )
 from mt_aligner_prep_tool.download import clone_github_repo, find_first_txt_file
 from mt_aligner_prep_tool.tokenizers import sent_tokenize
@@ -16,8 +18,14 @@ from mt_aligner_prep_tool.upload import (
 
 
 def pipeline(ids: List[str]):
+
+    """load progress"""
+    already_aligned_ids = load_checkpoint()
+
     """Download a repository from GitHub using git clone."""
     for id_ in ids:
+        if id_ in already_aligned_ids:
+            continue
         bo_id, en_id = f"BO{id_}", f"EN{id_}"
         bo_file_path = BO_FILES_PATH / bo_id
         en_file_path = EN_FILES_PATH / en_id
@@ -29,10 +37,10 @@ def pipeline(ids: List[str]):
         en_file = find_first_txt_file(en_file_path)
 
         if bo_file and en_file:
-            tokenize_files(bo_id, en_id, bo_file, en_file)
+            tokenize_files(id_, bo_id, en_id, bo_file, en_file)
 
 
-def tokenize_files(bo_id: str, en_id: str, bo_file: Path, en_file: Path):
+def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Path):
     """Tokenize the files and upload to S3"""
     tokenized_bo_text = sent_tokenize(bo_file.read_text(), lang="bo")
     tokenized_en_text = sent_tokenize(en_file.read_text(), lang="en")
@@ -45,10 +53,12 @@ def tokenize_files(bo_id: str, en_id: str, bo_file: Path, en_file: Path):
     tokenized_en_file_path.write_text(tokenized_en_text)
 
     """Upload both tokenized texts to S3"""
-    upload_tokenized_files(tokenized_bo_file_path, tokenized_en_file_path)
+    upload_tokenized_files(id_, tokenized_bo_file_path, tokenized_en_file_path)
 
 
-def upload_tokenized_files(tokenized_bo_file_path: Path, tokenized_en_file_path: Path):
+def upload_tokenized_files(
+    id_: str, tokenized_bo_file_path: Path, tokenized_en_file_path: Path
+):
     """Upload both tokenized texts to S3"""
     upload_file_to_s3(
         local_file_path=tokenized_bo_file_path,
@@ -71,9 +81,12 @@ def upload_tokenized_files(tokenized_bo_file_path: Path, tokenized_en_file_path:
     if tokenized_tibetan_url and tokenized_english_url:
         """send both urls to api"""
         """get github url where tm result is stored"""
+
         tm_url = send_api_request_to_aligner(  # noqa
             tokenized_tibetan_url, tokenized_english_url
         )
+        """save the id to checkpoint file"""
+        save_checkpoint(id_)
 
 
 if __name__ == "__main__":

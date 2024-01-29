@@ -16,6 +16,23 @@ EN_FILES_PATH = _mkdir(BASE_PATH / "english_files")
 TOKENIZED_FILES_PATH = _mkdir(BASE_PATH / "tokenized_files")
 
 
+CHECKPOINT_FILE = BASE_PATH / "checkpoint.txt"
+
+
+def load_checkpoint():
+    """Load the last checkpoint or create the file if it doesn't exist."""
+    if not CHECKPOINT_FILE.exists():
+        CHECKPOINT_FILE.touch()  # Create the file if it doesn't exist
+        return []
+
+    return CHECKPOINT_FILE.read_text().splitlines()
+
+
+def save_checkpoint(item):
+    with CHECKPOINT_FILE.open("a") as file:
+        file.write(item + "\n")
+
+
 def load_token():
     """Load credentials from a file"""
     credentials_file_path = Path.home() / ".hugging_face/credentials"
