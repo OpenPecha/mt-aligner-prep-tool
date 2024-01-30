@@ -7,6 +7,8 @@ from mt_aligner_prep_tool.config import (
     BO_FILES_PATH,
     EN_FILES_PATH,
     TOKENIZED_FILES_PATH,
+    is_id_already_aligned,
+    is_id_already_tokenized,
     load_checkpoint,
     save_checkpoint,
 )
@@ -57,30 +59,40 @@ def pipeline(file_path: Path):
     ids = get_file_content_by_lines(file_path)
 
     """load progress"""
-    already_aligned_ids = load_checkpoint()
+    id_checkpoints = load_checkpoint()
     files_tobe_aligned = []
 
     for id_ in ids:
         try:
-            if id_ in already_aligned_ids:
+            """if id is already tokenized and aligned, skip it"""
+            if is_id_already_aligned(id_, id_checkpoints):
                 continue
-            bo_id, en_id = f"BO{id_}", f"EN{id_}"
-            bo_file_path = BO_FILES_PATH / bo_id
-            en_file_path = EN_FILES_PATH / en_id
 
-            clone_github_repo(repository=bo_id, destination_folder=bo_file_path)
-            clone_github_repo(repository=en_id, destination_folder=en_file_path)
+            """if id is not tokenized, tokenize it"""
+            if not is_id_already_tokenized(id_, id_checkpoints):
+                bo_id, en_id = f"BO{id_}", f"EN{id_}"
+                bo_file_path = BO_FILES_PATH / bo_id
+                en_file_path = EN_FILES_PATH / en_id
 
-            bo_file = find_first_txt_file(bo_file_path)
-            en_file = find_first_txt_file(en_file_path)
+                clone_github_repo(repository=bo_id, destination_folder=bo_file_path)
+                clone_github_repo(repository=en_id, destination_folder=en_file_path)
 
-            if bo_file and en_file:
-                tokenized_bo_file_path, tokenized_en_file_path = tokenize_files(
-                    bo_id, en_id, bo_file, en_file
-                )
-                files_tobe_aligned.append(
-                    (id_, tokenized_bo_file_path, tokenized_en_file_path)
-                )
+                bo_file = find_first_txt_file(bo_file_path)
+                en_file = find_first_txt_file(en_file_path)
+                if bo_file and en_file:
+                    tokenized_bo_file_path, tokenized_en_file_path = tokenize_files(
+                        id_, bo_file, en_file
+                    )
+                    """save the id to checkpoint file for tokenization"""
+                    save_checkpoint(id_, "Tokenization")
+
+            tokenized_bo_file_path = TOKENIZED_FILES_PATH / f"tokenized_{bo_id}.txt"
+            tokenized_en_file_path = TOKENIZED_FILES_PATH / f"tokenized_{en_id}.txt"
+
+            files_tobe_aligned.append(
+                (id_, tokenized_bo_file_path, tokenized_en_file_path)
+            )
+
         except Exception as e:
             logging.error(f"{id_}: {e}")
             log_error_with_id(id_)
@@ -94,7 +106,8 @@ def pipeline(file_path: Path):
         log_error_with_id(id_)
 
 
-def tokenize_files(bo_id: str, en_id: str, bo_file: Path, en_file: Path):
+def tokenize_files(id_: str, bo_file: Path, en_file: Path):
+    bo_id, en_id = f"BO{id_}", f"EN{id_}"
     """Tokenize the files"""
     tokenized_bo_text = sent_tokenize(bo_file.read_text(), lang="bo")
     tokenized_en_text = sent_tokenize(en_file.read_text(), lang="en")
@@ -141,11 +154,10 @@ def upload_tokenized_files(
         )
         print(f"Alignment successful for {id_}")
         """save the id to checkpoint file"""
-        save_checkpoint(id_)
+        save_checkpoint(id_, "Alignment")
 
 
 if __name__ == "__main__":
-
     start = time.time()
     ROOT_DIR = Path(__file__).parent.parent.parent
     test_file_path = ROOT_DIR / "test_file.txt"

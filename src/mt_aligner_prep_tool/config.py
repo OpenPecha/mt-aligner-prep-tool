@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from typing import Dict
 
 
 def _mkdir(path):
@@ -16,7 +18,7 @@ EN_FILES_PATH = _mkdir(BASE_PATH / "english_files")
 TOKENIZED_FILES_PATH = _mkdir(BASE_PATH / "tokenized_files")
 
 
-CHECKPOINT_FILE = BASE_PATH / "checkpoint.txt"
+CHECKPOINT_FILE = BASE_PATH / "checkpoint.json"
 
 
 def load_checkpoint():
@@ -25,12 +27,38 @@ def load_checkpoint():
         CHECKPOINT_FILE.touch()  # Create the file if it doesn't exist
         return []
 
-    return CHECKPOINT_FILE.read_text().splitlines()
+    with CHECKPOINT_FILE.open("r") as file:
+        return json.load(file)
 
 
-def save_checkpoint(item):
-    with CHECKPOINT_FILE.open("a") as file:
-        file.write(item + "\n")
+def save_checkpoint(id_, stage: str):
+    """
+    Save a checkpoint for a specific ID and stage.
+
+    :param id_: The ID to save the checkpoint for.
+    :param stage: The stage (e.g., 'Tokenization', 'Alignment') of the process.
+    """
+    checkpoints = load_checkpoint()
+    if id_ not in checkpoints:
+        checkpoints[id_] = {"Tokenization": False, "Alignment": False}
+
+    """Save the checkpoint for the ID and stage."""
+    checkpoints[id_][stage] = True
+
+    with CHECKPOINT_FILE.open("w") as file:
+        json.dump(checkpoints, file, indent=4)
+
+
+def is_id_already_aligned(id_: str, id_checkpoints: Dict):
+    if id_ in id_checkpoints and id_checkpoints[id_]["Alignment"]:
+        return True
+    return False
+
+
+def is_id_already_tokenized(id_: str, id_checkpoints: Dict):
+    if id_ in id_checkpoints and id_checkpoints[id_]["Tokenization"]:
+        return True
+    return False
 
 
 def load_token():
