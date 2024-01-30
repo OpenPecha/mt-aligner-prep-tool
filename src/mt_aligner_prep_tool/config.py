@@ -28,7 +28,10 @@ def load_checkpoint():
         return []
 
     with CHECKPOINT_FILE.open("r") as file:
-        return json.load(file)
+        try:
+            return json.load(file)
+        except json.JSONDecodeError:
+            return {}
 
 
 def save_checkpoint(id_, stage: str):

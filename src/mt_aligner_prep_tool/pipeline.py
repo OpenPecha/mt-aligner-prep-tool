@@ -3,6 +3,8 @@ import multiprocessing
 import time
 from pathlib import Path
 
+from tqdm import tqdm
+
 from mt_aligner_prep_tool.config import (
     BO_FILES_PATH,
     EN_FILES_PATH,
@@ -62,7 +64,7 @@ def pipeline(file_path: Path):
     id_checkpoints = load_checkpoint()
     files_tobe_aligned = []
 
-    for id_ in ids:
+    for id_ in tqdm(ids, desc="Processing IDs"):
         try:
             """if id is already tokenized and aligned, skip it"""
             if is_id_already_aligned(id_, id_checkpoints):
@@ -126,6 +128,7 @@ def tokenize_files(id_: str, bo_file: Path, en_file: Path):
 def upload_tokenized_files(
     id_: str, tokenized_bo_file_path: Path, tokenized_en_file_path: Path
 ):
+    print(f"Uploading tokenized files to s3 bucket for {id_}")
     upload_file_to_s3(
         local_file_path=tokenized_bo_file_path,
         bucket="monlam.ai.tms",
@@ -149,6 +152,7 @@ def upload_tokenized_files(
         """send both urls to api"""
         """get github url where tm result is stored"""
 
+        print(f"Sending request to aligner for {id_}")
         _ = send_api_request_to_aligner(
             id_, tokenized_tibetan_url, tokenized_english_url
         )
