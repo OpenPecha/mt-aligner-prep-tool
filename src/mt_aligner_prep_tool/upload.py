@@ -12,8 +12,11 @@ def upload_file_to_s3(local_file_path: Path, bucket: str, s3_file: str):
     """local_file_path: Path to the file to upload"""
     """bucket: Bucket to upload to"""
     """s3_file: file name to be upload to s3, folder path in s3 bucket is included in the file name"""
-    s3_client = boto3.client("s3")
-    s3_client.upload_file(local_file_path, bucket, s3_file)
+    try:
+        s3_client = boto3.client("s3")
+        s3_client.upload_file(local_file_path, bucket, s3_file)
+    except Exception as e:
+        raise Exception(f"An error occurred while uploading file to s3: {e}")
 
 
 def create_s3_file_url(bucket_name: str, s3_file: str, expiration=36000):
@@ -28,11 +31,11 @@ def create_s3_file_url(bucket_name: str, s3_file: str, expiration=36000):
             Params={"Bucket": bucket_name, "Key": s3_file},
             ExpiresIn=expiration,
         )
+        return response
     except NoCredentialsError:
-        print("Credentials not available")
-        return None
-
-    return response
+        raise Exception("Credentials not available while creating s3 file url")
+    except Exception as e:
+        raise Exception(f"An error occurred while creating s3 file url: {e}")
 
 
 def generate_random_test_version():
@@ -77,9 +80,10 @@ def send_json_request(endpoint_url, bearer_token, json_data):
     try:
         response = requests.post(endpoint_url, headers=headers, json=json_data)
 
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return f"Error: {response.status_code}", response.text
+        if response.status_code != 200:
+            raise Exception(
+                f"Error with api request respond: {response.status_code}, {response.text}"
+            )
+        return response.json()
     except requests.exceptions.RequestException as e:
-        return f"Request failed: {e}"
+        raise Exception(f"Request failed while sending request to api: {e}")

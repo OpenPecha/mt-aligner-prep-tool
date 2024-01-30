@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from mt_aligner_prep_tool.config import (
@@ -13,6 +14,14 @@ from mt_aligner_prep_tool.upload import (
     create_s3_file_url,
     send_api_request_to_aligner,
     upload_file_to_s3,
+)
+
+log_fn = "errors.log"
+
+logging.basicConfig(
+    filename=str(log_fn),
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
 
@@ -40,20 +49,24 @@ def pipeline(file_path: Path):
     already_aligned_ids = load_checkpoint()
 
     for id_ in ids:
-        if id_ in already_aligned_ids:
+        try:
+            if id_ in already_aligned_ids:
+                continue
+            bo_id, en_id = f"BO{id_}", f"EN{id_}"
+            bo_file_path = BO_FILES_PATH / bo_id
+            en_file_path = EN_FILES_PATH / en_id
+
+            clone_github_repo(repository=bo_id, destination_folder=bo_file_path)
+            clone_github_repo(repository=en_id, destination_folder=en_file_path)
+
+            bo_file = find_first_txt_file(bo_file_path)
+            en_file = find_first_txt_file(en_file_path)
+
+            if bo_file and en_file:
+                tokenize_files(id_, bo_id, en_id, bo_file, en_file)
+        except Exception as e:
+            logging.error(f"{id_}: {e}")
             continue
-        bo_id, en_id = f"BO{id_}", f"EN{id_}"
-        bo_file_path = BO_FILES_PATH / bo_id
-        en_file_path = EN_FILES_PATH / en_id
-
-        clone_github_repo(repository=bo_id, destination_folder=bo_file_path)
-        clone_github_repo(repository=en_id, destination_folder=en_file_path)
-
-        bo_file = find_first_txt_file(bo_file_path)
-        en_file = find_first_txt_file(en_file_path)
-
-        if bo_file and en_file:
-            tokenize_files(id_, bo_id, en_id, bo_file, en_file)
 
 
 def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Path):
