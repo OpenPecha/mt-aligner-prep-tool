@@ -66,13 +66,14 @@ def pipeline(file_path: Path):
 
     for id_ in tqdm(ids, desc="Processing IDs"):
         try:
+            bo_id, en_id = f"BO{id_}", f"EN{id_}"
+
             """if id is already tokenized and aligned, skip it"""
             if is_id_already_aligned(id_, id_checkpoints):
                 continue
 
             """if id is not tokenized, tokenize it"""
             if not is_id_already_tokenized(id_, id_checkpoints):
-                bo_id, en_id = f"BO{id_}", f"EN{id_}"
                 bo_file_path = BO_FILES_PATH / bo_id
                 en_file_path = EN_FILES_PATH / en_id
 
