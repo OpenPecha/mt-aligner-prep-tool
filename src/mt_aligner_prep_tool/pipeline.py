@@ -1,4 +1,6 @@
 import logging
+import multiprocessing
+import time
 from pathlib import Path
 
 from mt_aligner_prep_tool.config import (
@@ -15,6 +17,7 @@ from mt_aligner_prep_tool.upload import (
     send_api_request_to_aligner,
     upload_file_to_s3,
 )
+from mt_aligner_prep_tool.utility import execution_time
 
 log_fn = "errors.log"
 error_id_log_fn = "error_ids.log"
@@ -55,6 +58,7 @@ def pipeline(file_path: Path):
 
     """load progress"""
     already_aligned_ids = load_checkpoint()
+    files_tobe_aligned = []
 
     for id_ in ids:
         try:
@@ -71,14 +75,26 @@ def pipeline(file_path: Path):
             en_file = find_first_txt_file(en_file_path)
 
             if bo_file and en_file:
-                tokenize_files(id_, bo_id, en_id, bo_file, en_file)
+                tokenized_bo_file_path, tokenized_en_file_path = tokenize_files(
+                    bo_id, en_id, bo_file, en_file
+                )
+                files_tobe_aligned.append(
+                    (id_, tokenized_bo_file_path, tokenized_en_file_path)
+                )
         except Exception as e:
             logging.error(f"{id_}: {e}")
             log_error_with_id(id_)
             continue
+    num_processes = 10
+    try:
+        with multiprocessing.Pool(num_processes) as pool:
+            pool.starmap(upload_tokenized_files, files_tobe_aligned)
+    except Exception as e:
+        logging.error(f"Alignment Failed {id_}: {e}")
+        log_error_with_id(id_)
 
 
-def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Path):
+def tokenize_files(bo_id: str, en_id: str, bo_file: Path, en_file: Path):
     """Tokenize the files"""
     tokenized_bo_text = sent_tokenize(bo_file.read_text(), lang="bo")
     tokenized_en_text = sent_tokenize(en_file.read_text(), lang="en")
@@ -90,10 +106,10 @@ def tokenize_files(id_: str, bo_id: str, en_id: str, bo_file: Path, en_file: Pat
     tokenized_bo_file_path.write_text(tokenized_bo_text)
     tokenized_en_file_path.write_text(tokenized_en_text)
 
-    """Upload both tokenized texts to S3"""
-    upload_tokenized_files(id_, tokenized_bo_file_path, tokenized_en_file_path)
+    return tokenized_bo_file_path, tokenized_en_file_path
 
 
+@execution_time(custom_name="upload_tokenized_files")
 def upload_tokenized_files(
     id_: str, tokenized_bo_file_path: Path, tokenized_en_file_path: Path
 ):
@@ -120,14 +136,19 @@ def upload_tokenized_files(
         """send both urls to api"""
         """get github url where tm result is stored"""
 
-        tm_url = send_api_request_to_aligner(  # noqa
-            tokenized_tibetan_url, tokenized_english_url
+        _ = send_api_request_to_aligner(
+            id_, tokenized_tibetan_url, tokenized_english_url
         )
+        print(f"Alignment successful for {id_}")
         """save the id to checkpoint file"""
         save_checkpoint(id_)
 
 
 if __name__ == "__main__":
+
+    start = time.time()
     ROOT_DIR = Path(__file__).parent.parent.parent
     test_file_path = ROOT_DIR / "test_file.txt"
     pipeline(test_file_path)
+    end = time.time()
+    print(f"Total time taken: {end - start} seconds.")
