@@ -17,12 +17,20 @@ from mt_aligner_prep_tool.upload import (
 )
 
 log_fn = "errors.log"
+error_id_log_fn = "error_ids.log"
+
 
 logging.basicConfig(
     filename=str(log_fn),
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+
+
+def log_error_with_id(id_: str):
+    """Log error message with ID to a separate file."""
+    with open(error_id_log_fn, "a") as log_file:
+        log_file.write(f"{id_}\n")
 
 
 def get_file_content_by_lines(file_path):
@@ -66,6 +74,7 @@ def pipeline(file_path: Path):
                 tokenize_files(id_, bo_id, en_id, bo_file, en_file)
         except Exception as e:
             logging.error(f"{id_}: {e}")
+            log_error_with_id(id_)
             continue
 
 
