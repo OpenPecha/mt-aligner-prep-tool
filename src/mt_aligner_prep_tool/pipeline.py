@@ -1,6 +1,6 @@
+import argparse
 import logging
 import multiprocessing
-import time
 from pathlib import Path
 
 from tqdm import tqdm
@@ -163,9 +163,17 @@ def upload_tokenized_files(
 
 
 if __name__ == "__main__":
-    start = time.time()
-    ROOT_DIR = Path(__file__).parent.parent.parent
-    test_file_path = ROOT_DIR / "test_file.txt"
-    pipeline(test_file_path)
-    end = time.time()
-    print(f"Total time taken: {end - start} seconds.")
+    parser = argparse.ArgumentParser(
+        description="Add TMs to dataset or update existing TMs"
+    )
+    parser.add_argument(
+        "file_path",
+        type=Path,
+        help="TM ids to be added",
+    )
+    args = parser.parse_args()
+
+    if args.file_path:
+        pipeline(args.file_path)
+    else:
+        print("Please provide a file path that contains TM ids")
