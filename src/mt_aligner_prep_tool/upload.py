@@ -1,5 +1,6 @@
 import random
 from pathlib import Path
+from typing import Optional
 
 import boto3
 import requests
@@ -48,17 +49,31 @@ def generate_random_test_version():
 
 
 def send_api_request_to_aligner(
-    id_: str, tokenized_tibetan_url: str, tokenized_english_url: str
+    id_: str,
+    tokenized_tibetan_url: str,
+    tokenized_english_url: str,
+    alignment_version: Optional[str],
 ):
-    """Send both urls to api"""
-    json_data = {
-        "inputs": {
-            "text_id": f"{id_}",
-            "bo_file_url": tokenized_tibetan_url,
-            "en_file_url": tokenized_english_url,
-            "parameters": {},
+    if alignment_version:
+        json_data = {
+            "inputs": {
+                "text_id": f"{id_}",
+                "bo_file_url": tokenized_tibetan_url,
+                "en_file_url": tokenized_english_url,
+                "version": alignment_version,
+                "realign": True,
+                "parameters": {},
+            }
         }
-    }
+    else:
+        json_data = {
+            "inputs": {
+                "text_id": f"{id_}",
+                "bo_file_url": tokenized_tibetan_url,
+                "en_file_url": tokenized_english_url,
+                "parameters": {},
+            }
+        }
 
     endpoint_url = "https://z4najyef6e0oe9mj.us-east-1.aws.endpoints.huggingface.cloud/"
     bearer_token = load_token()

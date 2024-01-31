@@ -2,6 +2,7 @@ import argparse
 import logging
 import multiprocessing
 from pathlib import Path
+from typing import Optional
 
 from tqdm import tqdm
 
@@ -10,6 +11,7 @@ from mt_aligner_prep_tool.config import (
     EN_FILES_PATH,
     TOKENIZED_FILES_PATH,
     is_id_already_aligned,
+    is_id_already_realigned,
     is_id_already_tokenized,
     load_checkpoint,
     save_checkpoint,
@@ -55,9 +57,17 @@ def get_file_content_by_lines(file_path):
         raise FileNotFoundError(f"No file found at {file_path}")
 
 
-def pipeline(file_path: Path):
-    """file_path: a file containing ids of the repositories to be aligned"""
-    """ids should be separated by new lines"""
+def pipeline(
+    file_path: Path, re_align: bool = False, alignment_version: Optional[str] = "v1"
+):
+    """
+    file_path: a file containing ids of the repositories to be aligned
+                ,ids should be separated by new lines
+    re_align: if True, realign the ids with the specific version
+    alignment_version: version you want to name for realign
+
+    """
+
     ids = get_file_content_by_lines(file_path)
 
     """load progress"""
@@ -68,8 +78,14 @@ def pipeline(file_path: Path):
         try:
             bo_id, en_id = f"BO{id_}", f"EN{id_}"
 
+            """if id is already realigned with the specific version, skip it"""
+            if re_align and is_id_already_realigned(
+                id_, alignment_version, id_checkpoints
+            ):
+                continue
+
             """if id is already tokenized and aligned, skip it"""
-            if is_id_already_aligned(id_, id_checkpoints):
+            if not re_align and is_id_already_aligned(id_, id_checkpoints):
                 continue
 
             """if id is not tokenized, tokenize it"""
@@ -92,8 +108,15 @@ def pipeline(file_path: Path):
             tokenized_bo_file_path = TOKENIZED_FILES_PATH / f"tokenized_{bo_id}.txt"
             tokenized_en_file_path = TOKENIZED_FILES_PATH / f"tokenized_{en_id}.txt"
 
+            if not re_align:
+                alignment_version = None
             files_tobe_aligned.append(
-                (id_, tokenized_bo_file_path, tokenized_en_file_path)
+                (
+                    id_,
+                    tokenized_bo_file_path,
+                    tokenized_en_file_path,
+                    alignment_version,
+                )
             )
 
         except Exception as e:
@@ -127,7 +150,10 @@ def tokenize_files(id_: str, bo_file: Path, en_file: Path):
 
 @execution_time(custom_name="upload_tokenized_files")
 def upload_tokenized_files(
-    id_: str, tokenized_bo_file_path: Path, tokenized_en_file_path: Path
+    id_: str,
+    tokenized_bo_file_path: Path,
+    tokenized_en_file_path: Path,
+    alignment_version: Optional[str] = None,
 ):
     print(f"Uploading tokenized files to s3 bucket for {id_}")
     upload_file_to_s3(
@@ -154,12 +180,17 @@ def upload_tokenized_files(
         """get github url where tm result is stored"""
 
         print(f"Sending request to aligner for {id_}")
+
         _ = send_api_request_to_aligner(
-            id_, tokenized_tibetan_url, tokenized_english_url
+            id_, tokenized_tibetan_url, tokenized_english_url, alignment_version
         )
         print(f"Alignment successful for {id_}")
         """save the id to checkpoint file"""
         save_checkpoint(id_, "Alignment")
+
+        if alignment_version:
+            """save the id to checkpoint file for re-alignment"""
+            save_checkpoint(id_, "re_alignment", alignment_version)
 
 
 if __name__ == "__main__":
@@ -171,9 +202,18 @@ if __name__ == "__main__":
         type=Path,
         help="TM ids to be added",
     )
+    parser.add_argument(
+        "--re_align", type=bool, default=False, help="Boolean flag for re-alignment"
+    )
+    parser.add_argument(
+        "--alignment_version",
+        type=str,
+        default="v1",
+        help="The version of the alignment process",
+    )
     args = parser.parse_args()
 
     if args.file_path:
-        pipeline(args.file_path)
+        pipeline(args.file_path, args.re_align, args.alignment_version)
     else:
         print("Please provide a file path that contains TM ids")
