@@ -47,11 +47,13 @@ def generate_random_test_version():
     return test_version
 
 
-def send_api_request_to_aligner(tokenized_tibetan_url: str, tokenized_english_url: str):
+def send_api_request_to_aligner(
+    id_: str, tokenized_tibetan_url: str, tokenized_english_url: str
+):
     """Send both urls to api"""
     json_data = {
         "inputs": {
-            "text_id": generate_random_test_version(),
+            "text_id": f"{id_}",
             "bo_file_url": tokenized_tibetan_url,
             "en_file_url": tokenized_english_url,
             "parameters": {},
