@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 
 def _mkdir(path):
@@ -34,7 +34,7 @@ def load_checkpoint():
             return {}
 
 
-def save_checkpoint(id_, stage: str):
+def save_checkpoint(id_, stage: str, version: str = None):
     """
     Save a checkpoint for a specific ID and stage.
 
@@ -43,10 +43,17 @@ def save_checkpoint(id_, stage: str):
     """
     checkpoints = load_checkpoint()
     if id_ not in checkpoints:
-        checkpoints[id_] = {"Tokenization": False, "Alignment": False}
+        checkpoints[id_] = {
+            "Tokenization": False,
+            "Alignment": False,
+            "re_alignment_versions": [],
+        }
 
     """Save the checkpoint for the ID and stage."""
-    checkpoints[id_][stage] = True
+    if stage == "re_alignment":
+        checkpoints[id_]["re_alignment_versions"].append(version)
+    else:
+        checkpoints[id_][stage] = True
 
     with CHECKPOINT_FILE.open("w") as file:
         json.dump(checkpoints, file, indent=4)
@@ -60,6 +67,15 @@ def is_id_already_aligned(id_: str, id_checkpoints: Dict):
 
 def is_id_already_tokenized(id_: str, id_checkpoints: Dict):
     if id_ in id_checkpoints and id_checkpoints[id_]["Tokenization"]:
+        return True
+    return False
+
+
+def is_id_already_realigned(id_: str, version: Optional[str], id_checkpoints: Dict):
+    if (
+        id_ in id_checkpoints
+        and version in id_checkpoints[id_]["re_alignment_versions"]
+    ):
         return True
     return False
 
