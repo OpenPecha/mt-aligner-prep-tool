@@ -31,7 +31,7 @@ error_id_log_fn = "error_ids.log"
 
 logging.basicConfig(
     filename=str(log_fn),
-    level=logging.DEBUG,
+    level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
@@ -181,9 +181,12 @@ def upload_tokenized_files(
 
         print(f"Sending request to aligner for {id_}")
 
-        _ = send_api_request_to_aligner(
+        response = send_api_request_to_aligner(
             id_, tokenized_tibetan_url, tokenized_english_url, alignment_version
         )
+        if isinstance(response, dict) and "error" in response:
+            raise Exception(response["error"])
+
         print(f"Alignment successful for {id_}")
         """save the id to checkpoint file"""
         save_checkpoint(id_, "Alignment")
