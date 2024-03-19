@@ -17,7 +17,13 @@ def clone_github_repo(
             _mkdir(destination_folder)
             repo_url = f"https://github.com/{organization}/{repository}.git"
             # Make a new folder in destination_folder and clone the repo there
-            command = ["git", "clone", repo_url, str(destination_folder)]
+            command = [
+                "git",
+                "clone",
+                "--no-checkout",
+                repo_url,
+                str(destination_folder),
+            ]
             subprocess.run(command, check=True)
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to clone repository {repo_url}: {e}")
