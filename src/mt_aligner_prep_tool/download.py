@@ -15,7 +15,7 @@ def clone_github_repo(
     try:
         if not destination_folder.exists():
             _mkdir(destination_folder)
-            repo_url = f"https://github.com/{organization}/{repository}.git"
+            repo_url = f"git@github.com:{organization}/{repository}.git"
             # Make a new folder in destination_folder and clone the repo there
             command = [
                 "git",
