@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import requests
+from tqdm import tqdm
 
 from mt_aligner_prep_tool.pipeline import get_file_content_by_lines
 
@@ -46,7 +47,7 @@ def merge_multiple_branches_to_main(
     """get ids from the txt files (by new lines)"""
     repo_ids = get_file_content_by_lines(repo_file_path)
 
-    for repo in repo_ids:
+    for repo in tqdm(repo_ids, desc="Merging branches to main"):
         merge_branch_to_main(f"TM{repo}", branch_name, org_name)
 
 
