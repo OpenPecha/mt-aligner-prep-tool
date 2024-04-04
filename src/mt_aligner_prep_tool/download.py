@@ -10,6 +10,12 @@ from github import Github
 ORG = "MonlamAI"
 
 
+class Error(Exception):
+    """Base class for other exceptions"""
+
+    pass
+
+
 def clone_github_repo(
     repository: str,
     destination_folder: Path,
@@ -32,7 +38,7 @@ def clone_github_repo(
         """could be due to file name too long"""
         clone_github_repo_with_api(repository, destination_folder)
     except Exception as e:
-        print(f"An error occurred while cloning repository {repo_url}: {e}")
+        raise Error(f"An error occurred while cloning repository {repo_url}: {e}")
 
 
 def clone_github_repo_with_api(
@@ -40,8 +46,7 @@ def clone_github_repo_with_api(
 ):
     github_token = os.environ.get("GITHUB_TOKEN")
     if github_token is None:
-        print("GitHub token not found in environment variables.")
-        return None
+        raise Error("GitHub token not found in environment variables.")
 
     g = Github(github_token)
     try:
@@ -61,8 +66,7 @@ def clone_github_repo_with_api(
             file_contents.download_url, f"{repository}.txt", destination_folder
         )
     except Exception as error:
-        print(f"An error occurred: {error}")
-        return None
+        raise Error(f"An error occurred: {error}")
 
 
 def download_file_with_url(
@@ -81,7 +85,7 @@ def download_file_with_url(
             local_file.write(response.content)
         print(f"File downloaded and saved to {local_file_path}")
     else:
-        print(f"Failed to download file. Status code: {response.status_code}")
+        raise Error(f"Failed to download file. Status code: {response.status_code}")
 
 
 def find_first_txt_file(folder_path: Path) -> Optional[Path]:
