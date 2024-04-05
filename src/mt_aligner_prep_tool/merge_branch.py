@@ -1,44 +1,32 @@
 import argparse
 import os
+import subprocess
 from pathlib import Path
 
-import requests
 from tqdm import tqdm
 
+from mt_aligner_prep_tool.config import TM_FILES_PATH
 from mt_aligner_prep_tool.pipeline import get_file_content_by_lines
 
 
 def merge_branch_to_main(repo_name: str, branch_name: str, org_name: str):
-    """
-    Merge a specified branch into the main branch of a given GitHub repository.
+    """ssh cloning url"""
+    clone_url = f"git@github.com:{org_name}/{repo_name}.git"
+    clone_dir = os.path.join(TM_FILES_PATH, repo_name)
 
-    Parameters:
-    - org_name: Name of the organization or username.
-    - repo_name: Name of the repository.
-    - branch_name: Name of the branch to merge into main.
-    - token: GitHub personal access token with repo permissions.
-    """
+    """ clone the repository """
+    subprocess.run(
+        ["git", "clone", clone_url, clone_dir], check=True, cwd=TM_FILES_PATH
+    )
 
-    token = os.environ.get("GITHUB_TOKEN")
-
-    api_url = f"https://api.github.com/repos/{org_name}/{repo_name}/merges"
-    headers = {
-        "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
-    data = {
-        "base": "main",
-        "head": branch_name,
-        "commit_message": f"Merging {branch_name} into main",
-    }
-
-    response = requests.post(api_url, json=data, headers=headers)
-    if response.status_code == 201:
-        print(f"Branch '{branch_name}' successfully merged into main.")
-    else:
-        print(
-            f"Failed to merge branch '{branch_name}' into main. Response: {response.text}"
-        )
+    """ merge branch with main """
+    subprocess.run(["git", "checkout", "main"], check=True, cwd=clone_dir)
+    subprocess.run(
+        ["git", "merge", branch_name, "--allow-unrelated-histories"],
+        check=True,
+        cwd=clone_dir,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=clone_dir)
 
 
 def merge_multiple_branches_to_main(
