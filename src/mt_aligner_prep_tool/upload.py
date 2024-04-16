@@ -75,7 +75,7 @@ def send_api_request_to_aligner(
             }
         }
 
-    endpoint_url = "https://z4najyef6e0oe9mj.us-east-1.aws.endpoints.huggingface.cloud/"
+    endpoint_url = "https://x7ax6peed5uy2pr9.us-east-1.aws.endpoints.huggingface.cloud/"
     bearer_token = load_token()
 
     result = send_json_request(endpoint_url, bearer_token, json_data)
