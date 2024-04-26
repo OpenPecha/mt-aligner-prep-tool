@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil 
 import subprocess
 from pathlib import Path
 
@@ -14,19 +15,43 @@ def merge_branch_to_main(repo_name: str, branch_name: str, org_name: str):
     clone_url = f"git@github.com:{org_name}/{repo_name}.git"
     clone_dir = os.path.join(TM_FILES_PATH, repo_name)
 
+    repo_path = TM_FILES_PATH/ repo_name
+    if repo_path.exists():
+        shutil.rmtree(TM_FILES_PATH/repo_name)
     """ clone the repository """
     subprocess.run(
         ["git", "clone", clone_url, clone_dir], check=True, cwd=TM_FILES_PATH
     )
-
-    """ merge branch with main """
+    
+    """ merge branch with main without committing """
     subprocess.run(["git", "checkout", "main"], check=True, cwd=clone_dir)
     subprocess.run(
-        ["git", "merge", branch_name, "--allow-unrelated-histories"],
+        ["git", "merge", f"origin/{branch_name}", "--no-commit", "--no-ff"],
         check=True,
         cwd=clone_dir,
     )
-    subprocess.run(["git", "push", "origin", "main"], cwd=clone_dir)
+    """ Reset and checkout the README.md file to be excluded """
+    subprocess.run(
+        ["git", "reset", "HEAD", "README.md"],
+        check=True,
+        cwd=clone_dir,
+    )
+    subprocess.run(
+        ["git", "checkout", "--", "README.md"],
+        check=True,
+        cwd=clone_dir,
+    )
+
+    """ Commit the merge excluding the README.md file """
+    subprocess.run(
+        ["git", "commit", "-m", f"Merged branch '{branch_name}' into main."],
+        check=True,
+        cwd=clone_dir,
+    )
+
+    """ Push the changes """
+    subprocess.run(["git", "push", "origin", "main"], check=True, cwd=clone_dir)
+
 
 
 def merge_multiple_branches_to_main(
@@ -57,3 +82,4 @@ if __name__ == "__main__":
         merge_multiple_branches_to_main(args.file_path, args.branch_name)
     else:
         print("Please provide a file path that contains TM ids and branch name")
+
