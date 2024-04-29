@@ -4,6 +4,8 @@ from typing import List
 import botok
 from spacy.lang.en import English
 
+from mt_aligner_prep_tool.utility import SuppressStdout
+
 bo_word_tokenizer = None
 en_nlp = English()
 en_nlp.add_pipe("sentencizer")
@@ -35,7 +37,6 @@ def en_preprocess(text: str) -> str:
 
 def en_sent_tokenizer(text: SENT_PER_LINE_STR) -> SENT_PER_LINE_STR:
     """Tokenize a text into sentences."""
-    print("[INFO] Tokenizing English text...")
     text = en_preprocess(text)
     doc = en_nlp(text)
     sentences = [sent.text for sent in doc.sents]
@@ -56,7 +57,6 @@ def bo_preprocess(text: str) -> str:
 
 def bo_sent_tokenizer(text: str) -> SENT_PER_LINE_STR:
     """Tokenize a text into sentences."""
-    print("[INFO] Tokenizing Tibetan text...")
 
     def get_token_text(token):
         if hasattr(token, "text_cleaned") and token.text_cleaned:
@@ -122,6 +122,7 @@ def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
     if lang == "en":
         return en_sent_tokenizer(text)
     elif lang == "bo":
-        return bo_sent_tokenizer(text)
+        with SuppressStdout():
+            return bo_sent_tokenizer(text)
     else:
         raise NotImplementedError
