@@ -33,7 +33,8 @@ def clone_github_repo(
             repo_url,
             str(destination_folder),
         ]
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     except subprocess.CalledProcessError as e:  # noqa
         """could be due to file name too long"""
         clone_github_repo_with_api(repository, destination_folder)
