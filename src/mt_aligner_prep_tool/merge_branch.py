@@ -20,28 +20,28 @@ def merge_branch_to_main(repo_name: str, branch_name: str, org_name: str):
         shutil.rmtree(clone_dir)
 
     """ Clone the repository """
-    subprocess.run(["git", "clone", clone_url, clone_dir], check=True)
+    subprocess.run(["git", "clone", clone_url, clone_dir], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     """ Checkout the main branch and start the merge without committing """
-    subprocess.run(["git", "checkout", "main"], check=True, cwd=clone_dir)
+    subprocess.run(["git", "checkout", "main"], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        subprocess.run(["git", "merge", f"origin/{branch_name}", "--no-commit", "--no-ff", "--allow-unrelated-histories"], check=True, cwd=clone_dir)
+        subprocess.run(["git", "merge", f"origin/{branch_name}", "--no-commit", "--no-ff", "--allow-unrelated-histories"], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         commit_message = f"Merged branch '{branch_name}' into main."
     except subprocess.CalledProcessError:
         """ Handle conflicts by preferring changes from the branch being merged """
-        subprocess.run("git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir)
+        subprocess.run("git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         conflicted_files = subprocess.check_output(
-            "git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir
+            "git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         ).splitlines()
         for file in conflicted_files:
-            subprocess.run(["git", "checkout", "--theirs", file], check=True, cwd=clone_dir)
-            subprocess.run(["git", "add", file], check=True, cwd=clone_dir)
+            subprocess.run(["git", "checkout", "--theirs", file], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "add", file], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         """ Commit the resolved merge """
         commit_message = f"Merged branch '{branch_name}' into main with incoming changes preferred."
-    subprocess.run(["git", "commit", "-m", commit_message], check=True, cwd=clone_dir)
+    subprocess.run(["git", "commit", "-m", commit_message], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     """ Push the changes back to the remote repository """
-    subprocess.run(["git", "push", "origin", "main"], check=True, cwd=clone_dir)
+    subprocess.run(["git", "push", "origin", "main"], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
 def merge_multiple_branches_to_main(
     repo_file_path: Path, branch_name: str, org_name="MonlamAI"
