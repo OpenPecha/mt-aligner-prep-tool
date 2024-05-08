@@ -1,11 +1,12 @@
 import subprocess
 import argparse
+from tqdm import tqdm
 
 def check_repo_exists_ssh(org_name, repo_names):
     existing_repos = []
     base_url = "git@github.com:"
     
-    for repo_name in repo_names:
+    for repo_name in tqdm(repo_names, desc="Checking if repositories exits"):
         repo_url = f"{base_url}{org_name}/{repo_name}.git"
         result = subprocess.run(["git", "ls-remote", repo_url], capture_output=True, text=True)
         if result.returncode == 0:
@@ -33,7 +34,7 @@ if __name__ == "__main__":
 
     """ remove TM from the existing repo names """
     existing_repos = [repo[2:] for repo in existing_repos]
-    
+
     """ Write the existing repository names to a file """
     with open('existing_TMs.txt', 'w') as file:
         for repo in existing_repos:
