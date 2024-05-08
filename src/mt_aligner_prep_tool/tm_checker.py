@@ -1,19 +1,36 @@
 import subprocess
 import argparse
 from tqdm import tqdm
+from multiprocessing import Pool
+
+def worker_task(args):
+
+    org_name, repo_name = args
+
+    base_url = "git@github.com:"
+    repo_url = f"{base_url}{org_name}/{repo_name}.git"
+    result = subprocess.run(["git", "ls-remote", repo_url], capture_output=True, text=True)
+    if result.returncode == 0:
+        return repo_name
+    
+    return None 
+
 
 def check_repo_exists_ssh(org_name, repo_names):
     existing_repos = []
-    base_url = "git@github.com:"
+    tasks = [(org_name, repo_name) for repo_name in repo_names]
     
-    for repo_name in tqdm(repo_names, desc="Checking if repositories exits"):
-        repo_url = f"{base_url}{org_name}/{repo_name}.git"
-        result = subprocess.run(["git", "ls-remote", repo_url], capture_output=True, text=True)
-        if result.returncode == 0:
-            existing_repos.append(repo_name)
-        else:
-            # Could add logging or error handling here
-            pass 
+    num_processes = 5
+    with Pool(processes=num_processes) as pool:
+        results = list(
+            tqdm(
+                pool.imap(worker_task, tasks),
+                total=len(tasks),
+                desc="Converting files to txt",
+            )
+        )
+
+    existing_repos = [repo for repo in results if repo is not None]
     return existing_repos
 
     
