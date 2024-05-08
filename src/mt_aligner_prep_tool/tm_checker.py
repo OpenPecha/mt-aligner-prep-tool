@@ -39,5 +39,11 @@ if __name__ == "__main__":
     with open('existing_TMs.txt', 'w') as file:
         for repo in existing_repos:
             file.write(repo + '\n')
+    
+    """ Write the non-existing repository names to a file """
+    with open('non_existing_TMs.txt', 'w') as file:
+        for repo in repo_names:
+            if repo not in existing_repos:
+                file.write(repo + '\n')
 
     print("Complete checking for existing repositories.")
