@@ -1,6 +1,6 @@
 import argparse
 import logging
-import multiprocessing
+from  multiprocessing import Pool
 from pathlib import Path
 from typing import Optional
 
@@ -74,7 +74,7 @@ def pipeline(
     id_checkpoints = load_checkpoint()
     files_tobe_aligned = []
 
-    for id_ in tqdm(ids, desc="Processing IDs"):
+    for id_ in tqdm(ids, desc="Tokenizing files"):
         try:
             bo_id, en_id = f"BO{id_}", f"EN{id_}"
 
@@ -124,9 +124,18 @@ def pipeline(
             log_error_with_id(id_)
             continue
     num_processes = 10
+    if len(files_tobe_aligned)== 0:
+        print("All the ids are already aligned")
+        return
     try:
-        with multiprocessing.Pool(num_processes) as pool:
-            pool.starmap(upload_tokenized_files, files_tobe_aligned)
+        with Pool(processes=num_processes) as pool:
+            list(
+                tqdm(
+                    pool.imap(upload_tokenized_files, files_tobe_aligned),
+                    total=len(files_tobe_aligned),
+                    desc="Uploading and aligning files",
+                )
+            )
     except Exception as e:
         logging.error(f"Alignment Failed {id_}: {e}")
         log_error_with_id(id_)
@@ -148,13 +157,11 @@ def tokenize_files(id_: str, bo_file: Path, en_file: Path):
     return tokenized_bo_file_path, tokenized_en_file_path
 
 
-@execution_time(custom_name="upload_tokenized_files")
+@execution_time(custom_name="upload_tokenized_files_and_aligning")
 def upload_tokenized_files(
-    id_: str,
-    tokenized_bo_file_path: Path,
-    tokenized_en_file_path: Path,
-    alignment_version: Optional[str] = None,
+   args
 ):
+    id_, tokenized_bo_file_path, tokenized_en_file_path, alignment_version = args
     print(f"Uploading tokenized files to s3 bucket for {id_}")
     upload_file_to_s3(
         local_file_path=tokenized_bo_file_path,
