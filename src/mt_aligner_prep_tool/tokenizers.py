@@ -86,6 +86,7 @@ def bo_sent_tokenizer(text: str) -> SENT_PER_LINE_STR:
 
     text = bo_preprocess(text)
     sents_words = []
+    current_sentence = []
     tokenizer = get_bo_word_tokenizer()
     tokens = tokenizer.tokenize(text, split_affixes=False)
     for token in tokens:
@@ -93,15 +94,22 @@ def bo_sent_tokenizer(text: str) -> SENT_PER_LINE_STR:
             continue
         token_text = get_token_text(token)
         if any(punct in token_text for punct in opening_puncts):
-            sents_words.append(token_text.strip())
+            current_sentence.append(token_text.strip())
         elif any(punct in token_text for punct in closing_puncts):
-            sents_words.append(token_text.strip())
-            sents_words.append("\n")
+            current_sentence.append(token_text.strip())
+            sents_words.append("".join(current_sentence))
+            current_sentence = []
         else:
-            sents_words.append(token_text)
+            current_sentence.append(token_text)
 
-    sents_text = "".join(sents_words)
+    # If there's any remaining text in the current_sentence
+    if current_sentence:
+        sents_words.append("".join(current_sentence))
 
+    # Join all sentences with a newline
+    sents_text = "\n".join(sents_words)
+
+    # Apply replacements
     for fr, to in r_replace:
         sents_text = re.sub(fr, to, sents_text)
 
@@ -114,6 +122,44 @@ def remove_emojis(text):
         text = text.replace(emoji, "")
     return text
 
+def split_text_into_mb_chunks(text, chunk_size_mb=1):
+    chunk_size_bytes = chunk_size_mb * 1024 * 1024  # Convert MB to bytes
+    chunks = []
+    current_chunk = []
+    current_size = 0
+
+    lines = text.splitlines(keepends=True)  # Split text into lines, preserving line breaks
+
+    for line in lines:
+        line_size = len(line.encode('utf-8'))
+        
+        if current_size + line_size > chunk_size_bytes:
+            # If adding this line exceeds the chunk size, store the current chunk and reset
+            if current_chunk:  # Ensure there's something to append
+                chunks.append(''.join(current_chunk))
+                current_chunk = []
+                current_size = 0
+
+            # If the line itself is larger than the chunk size, split it further
+            while line_size > chunk_size_bytes:
+                part = line[:chunk_size_bytes - current_size]
+                line = line[chunk_size_bytes - current_size:]
+                line_size = len(line.encode('utf-8'))
+                current_chunk.append(part)
+                chunks.append(''.join(current_chunk))
+                current_chunk = []
+                current_size = 0
+
+        # Add the line to the current chunk
+        current_chunk.append(line)
+        current_size += line_size
+
+    # Add the last chunk if any
+    if current_chunk:
+        chunks.append(''.join(current_chunk))
+
+    return chunks
+
 
 def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
     """Tokenize a text into sentences."""
@@ -123,6 +169,9 @@ def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
         return en_sent_tokenizer(text)
     elif lang == "bo":
         with SuppressStdout():
-            return bo_sent_tokenizer(text)
+            splited_text = split_text_into_mb_chunks(text)
+            tokenized_text = [bo_sent_tokenizer(chunk).strip() for chunk in splited_text]
+            return "\n".join(filter(None, tokenized_text))  # Only join non-empty entries
     else:
         raise NotImplementedError
+
