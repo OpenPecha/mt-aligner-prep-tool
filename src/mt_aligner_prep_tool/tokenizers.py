@@ -171,7 +171,8 @@ def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
         with SuppressStdout():
             splited_text = split_text_into_mb_chunks(text)
             tokenized_text = [bo_sent_tokenizer(chunk).strip() for chunk in splited_text]
-            return "\n".join(filter(None, tokenized_text))  # Only join non-empty entries
+            joined_tokenized_text = "\n".join(filter(None, tokenized_text)) # Only join non-empty entries
+            return  f"{joined_tokenized_text}\n"
     else:
         raise NotImplementedError
 
