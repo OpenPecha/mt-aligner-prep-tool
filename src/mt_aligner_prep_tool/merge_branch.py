@@ -6,8 +6,28 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from mt_aligner_prep_tool.config import TM_FILES_PATH
+from mt_aligner_prep_tool.config import TM_FILES_PATH, BASE_PATH
 from mt_aligner_prep_tool.pipeline import get_file_content_by_lines
+
+
+def save_merged_branch_checkpoint(repo_name: str, branch_name: str):
+    checkpoint_file = BASE_PATH/ f"{branch_name}.txt"
+    if not checkpoint_file.exists():
+        checkpoint_file.touch()
+        return 
+    with open(checkpoint_file, "a") as file:
+        file.write(f"{repo_name}\n")
+
+def load_merged_branch_checkpoint(branch_name: str):
+    checkpoint_file = BASE_PATH/ f"{branch_name}.txt"
+    if not checkpoint_file.exists():
+        checkpoint_file.touch()
+        return []
+    
+    checkpoint = checkpoint_file.read_text().splitlines()
+    checkpoint = [tm_id for tm_id in checkpoint if tm_id]
+    return checkpoint
+
 
 def merge_branch_to_main(repo_name: str, branch_name: str, org_name: str):
 
@@ -31,7 +51,7 @@ def merge_branch_to_main(repo_name: str, branch_name: str, org_name: str):
         """ Handle conflicts by preferring changes from the branch being merged """
         subprocess.run("git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         conflicted_files = subprocess.check_output(
-            "git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            "git diff --name-only --diff-filter=U", shell=True, text=True, cwd=clone_dir
         ).splitlines()
         for file in conflicted_files:
             subprocess.run(["git", "checkout", "--theirs", file], check=True, cwd=clone_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -60,8 +80,12 @@ def merge_multiple_branches_to_main(
     """get ids from the txt files (by new lines)"""
     repo_ids = get_file_content_by_lines(repo_file_path)
 
+    checkpoints = load_merged_branch_checkpoint(branch_name)
     for repo in tqdm(repo_ids, desc="Merging branches to main"):
+        if repo in checkpoints:
+            continue
         merge_branch_to_main(f"TM{repo}", branch_name, org_name)
+        save_merged_branch_checkpoint(repo, branch_name)
 
 
 if __name__ == "__main__":
