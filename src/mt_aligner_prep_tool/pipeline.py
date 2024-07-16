@@ -125,7 +125,6 @@ def pipeline(
             continue
     num_processes = 10
     if len(files_tobe_aligned)== 0:
-        print("All the ids are already aligned")
         return
     try:
         with Pool(processes=num_processes) as pool:
