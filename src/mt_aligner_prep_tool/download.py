@@ -8,11 +8,11 @@ import requests
 from github import Github
 
 ORG = "MonlamAI"
+FALLBACK_ORG = "aspiration-ai"
 
 
 class Error(Exception):
     """Base class for other exceptions"""
-
     pass
 
 
@@ -21,6 +21,22 @@ def clone_github_repo(
     destination_folder: Path,
     organization: str = ORG,
 ):
+    try:
+        clone_repo(repository, destination_folder, organization)
+    except Error as e:
+        print(f"Failed to clone with {organization}: {e}")
+        if organization == ORG:
+            try:
+                print(f"Retrying with {FALLBACK_ORG}")
+                clone_repo(repository, destination_folder, FALLBACK_ORG)
+            except Error as fallback_e:
+                print(f"Failed to clone with {FALLBACK_ORG}: {fallback_e}")
+                raise Error(f"Both attempts to clone repository {repository} failed.")
+        else:
+            raise Error(f"An error occurred while cloning repository {repository} with {organization}: {e}")
+
+
+def clone_repo(repository: str, destination_folder: Path, organization: str):
     if destination_folder.exists():
         shutil.rmtree(destination_folder)
     destination_folder.mkdir(parents=True, exist_ok=True)
@@ -34,16 +50,15 @@ def clone_github_repo(
             str(destination_folder),
         ]
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
     except subprocess.CalledProcessError as e:  # noqa
         """could be due to file name too long"""
-        clone_github_repo_with_api(repository, destination_folder)
+        clone_github_repo_with_api(repository, destination_folder, organization)
     except Exception as e:
         raise Error(f"An error occurred while cloning repository {repo_url}: {e}")
 
 
 def clone_github_repo_with_api(
-    repository: str, destination_folder: Path, organization: str = ORG
+    repository: str, destination_folder: Path, organization: str
 ):
     github_token = os.environ.get("GITHUB_TOKEN")
     if github_token is None:
@@ -51,7 +66,6 @@ def clone_github_repo_with_api(
 
     g = Github(github_token)
     try:
-
         repo = g.get_repo(f"{organization}/{repository}")
         contents = repo.get_contents("")
 
@@ -73,7 +87,6 @@ def clone_github_repo_with_api(
 def download_file_with_url(
     download_url: str, new_downloaded_file_name: str, destination_folder: Path
 ):
-
     if download_url is None:
         return
     # Send a GET request to download the file
