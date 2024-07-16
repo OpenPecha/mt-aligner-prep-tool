@@ -23,6 +23,7 @@ dependencies = [
   "PyGithub >= 2.3.0",
   "requests >= 2.31.0",
   "tqdm >= 4.66.2",
+  "bo-sent-tokenizer @ git+https://github.com/OpenPecha/bo_sent_tokenizer.git"
 ]
 
 [project.optional-dependencies]
