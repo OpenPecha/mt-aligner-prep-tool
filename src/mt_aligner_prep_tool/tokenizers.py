@@ -56,7 +56,6 @@ def remove_emojis(text):
 
 def split_text_into_mb_chunks(text, chunk_size_mb=1):
     chunk_size_bytes = chunk_size_mb * 1024 * 1024  # Convert MB to bytes
-    chunks = []
     current_chunk = []
     current_size = 0
 
@@ -64,23 +63,24 @@ def split_text_into_mb_chunks(text, chunk_size_mb=1):
 
     for line in lines:
         line_size = len(line.encode('utf-8'))
-        
-        if current_size + line_size > chunk_size_bytes:
-            # If adding this line exceeds the chunk size, store the current chunk and reset
-            if current_chunk:  # Ensure there's something to append
-                chunks.append(''.join(current_chunk))
+
+        while current_size + line_size > chunk_size_bytes:
+            if current_chunk:
+                yield ''.join(current_chunk)
                 current_chunk = []
                 current_size = 0
 
             # If the line itself is larger than the chunk size, split it further
-            while line_size > chunk_size_bytes:
+            if line_size > chunk_size_bytes:
                 part = line[:chunk_size_bytes - current_size]
                 line = line[chunk_size_bytes - current_size:]
-                line_size = len(line.encode('utf-8'))
+                line_size = len(line.encode('utf-8', 'ignore'))
                 current_chunk.append(part)
-                chunks.append(''.join(current_chunk))
+                yield ''.join(current_chunk)
                 current_chunk = []
                 current_size = 0
+            else:
+                break
 
         # Add the line to the current chunk
         current_chunk.append(line)
@@ -88,9 +88,8 @@ def split_text_into_mb_chunks(text, chunk_size_mb=1):
 
     # Add the last chunk if any
     if current_chunk:
-        chunks.append(''.join(current_chunk))
+        yield ''.join(current_chunk)
 
-    return chunks
 
 
 def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
@@ -101,10 +100,15 @@ def sent_tokenize(text, lang) -> SENT_PER_LINE_STR:
         return en_sent_tokenizer(text)
     elif lang == "bo":
         with SuppressStdout():
-            splited_text = split_text_into_mb_chunks(text)
-            tokenized_text = [bo_sent_tokenizer(chunk).strip() for chunk in splited_text]
-            joined_tokenized_text = "\n".join(filter(None, tokenized_text)) # Only join non-empty entries
-            return  f"{joined_tokenized_text}\n"
+            def tokenize_and_filter(text):
+                splited_text = split_text_into_mb_chunks(text)
+                for chunk in splited_text:
+                    tokenized_chunk = bo_sent_tokenizer(chunk).strip()
+                    if tokenized_chunk:
+                        yield tokenized_chunk
+            
+            return "\n".join(tokenize_and_filter(text)) + "\n"
     else:
         raise NotImplementedError
+
 
